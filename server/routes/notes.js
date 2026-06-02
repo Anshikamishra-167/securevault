@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Note = require('../models/Note');
 
-// GET all notes (returns encrypted blobs only)
+// GET all notes
 router.get('/', async (req, res) => {
   try {
     const notes = await Note.find().sort({ updatedAt: -1 });
@@ -16,7 +16,13 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { encryptedTitle, encryptedContent, iv, salt, contentIv, contentSalt, color } = req.body;
-console.log('Received fields:', { encryptedTitle: !!encryptedTitle, encryptedContent: !!encryptedContent, iv: !!iv, salt: !!salt, contentIv: !!contentIv, contentSalt: !!contentSalt });
+    console.log('Creating note, fields present:', {
+      encryptedTitle: !!encryptedTitle,
+      encryptedContent: !!encryptedContent,
+      iv: !!iv, salt: !!salt,
+      contentIv: !!contentIv,
+      contentSalt: !!contentSalt
+    });
     if (!encryptedTitle || !encryptedContent || !iv || !salt || !contentIv || !contentSalt) {
       return res.status(400).json({ error: 'Missing required encrypted fields' });
     }
@@ -28,13 +34,32 @@ console.log('Received fields:', { encryptedTitle: !!encryptedTitle, encryptedCon
   }
 });
 
-// PUT update note
+// PUT update note — always save ALL new encryption fields
 router.put('/:id', async (req, res) => {
   try {
-    const { encryptedTitle, encryptedContent, iv, salt, color } = req.body;
+    const { encryptedTitle, encryptedContent, iv, salt, contentIv, contentSalt, color } = req.body;
+    console.log('Updating note, fields present:', {
+      encryptedTitle: !!encryptedTitle,
+      encryptedContent: !!encryptedContent,
+      iv: !!iv, salt: !!salt,
+      contentIv: !!contentIv,
+      contentSalt: !!contentSalt
+    });
+    if (!encryptedTitle || !encryptedContent || !iv || !salt || !contentIv || !contentSalt) {
+      return res.status(400).json({ error: 'Missing required encrypted fields' });
+    }
     const note = await Note.findByIdAndUpdate(
       req.params.id,
-      { encryptedTitle, encryptedContent, iv, salt, color, updatedAt: new Date() },
+      {
+        encryptedTitle,
+        encryptedContent,
+        iv,
+        salt,
+        contentIv,
+        contentSalt,
+        color,
+        updatedAt: new Date()
+      },
       { new: true }
     );
     if (!note) return res.status(404).json({ error: 'Note not found' });
